@@ -258,3 +258,88 @@ setError({ message: error.message || "Could not fetch places, please try again l
         });
 
 - A problem now is that since we are not running a async await function here, but a callback, js will execute the setIsFetching(false) line right after the getCurrentPosition has been invoked, but before the data is received back. So one should move that part of the code into the callback function after setting the available places AND one should also call after an error is returned if there is one.
+  import { useEffect, useState } from "react";
+  import Places from "./Places.jsx";
+  import Error from "./Error.jsx";
+  import { sortPlacesByDistance } from "../loc.js";
+
+export default function AvailablePlaces({ onSelectPlace }) {
+const [isFetching, setIsFetching] = useState();
+const [availablePlaces, setAvailablePlaces] = useState([]);
+const [error, setError] = useState();
+
+useEffect(() => {
+//setIsFetching(true);
+async function fetchPlaces() {
+setIsFetching(true);
+
+      try {
+        const response = await fetch("http://localhost:3000/places");
+        const resData = await response.json();
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch places");
+        }
+
+        navigator.geolocation.getCurrentPosition((position) => {
+          const sortedPlaces = sortPlacesByDistance(resData.places, position.coords.latitude, position.coords.langitude);
+
+          setAvailablePlaces(sortedPlaces);
+          setIsFetching(false);
+        });
+      } catch (error) {
+        setError({ message: error.message || "Could not fetch places, please try again later" });
+        setIsFetching(false);
+      }
+    }
+
+    fetchPlaces();
+
+}, []);
+
+if (error) {
+return <Error title="An error occured" message={error.message} />;
+}
+
+return <Places title="Available Places" places={availablePlaces} isLoading={isFetching} loadingText="Fetching place data..." fallbackText="No places available." onSelectPlace={onSelectPlace} />;
+}
+
+## Extracting code to simplify
+
+- By moving the fetch part from inside the try block to a utility function you can either throw the error if there is one or you can return the resData.places if there is data
+- So now inside the Available places you need to import this function back into the AvailablePlaces component and call it inside the try blockm and now you can await it because it would deliver a promise.
+- put this into a const that you can now use in the place of resDate.places
+- potentially this outcourced code can now be used in other places in the app
+  useEffect(() => {
+  async function fetchPlaces() {
+  setIsFetching(true);
+
+        try {
+          const places = await fetchAvailablePlaces();
+
+          navigator.geolocation.getCurrentPosition((position) => {
+            const sortedPlaces = sortPlacesByDistance(places, position.coords.latitude, position.coords.langitude);
+
+            setAvailablePlaces(sortedPlaces);
+            setIsFetching(false);
+          });
+        } catch (error) {
+          setError({ message: error.message || "Could not fetch places, please try again later" });
+          setIsFetching(false);
+        }
+
+  }
+
+  fetchPlaces();
+  }, []);
+
+  - Code for the outsourced http request
+    export async function fetchAvailablePlaces() {
+    const response = await fetch("http://localhost:3000/places");
+    const resData = await response.json();
+
+  if (!response.ok) {
+  throw new Error("Failed to fetch places");
+  }
+  return resData.places;
+  }
