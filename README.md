@@ -102,7 +102,7 @@ Sends a response: Finally, the server sends a response back to the client with a
   });
   - This code now would create an infinite loop. That is why a get request gets wrapped with useEffect in react - to prevent the loop
 
-### Using async await
+## Using async await
 
 - To make the code more readable you can replace the .then methods with the async await structure inside the useEffect function. This is allowed because we are now working with code that is created by us and not on component level where react expect specific form
 
@@ -121,39 +121,39 @@ Sends a response: Finally, the server sends a response back to the client with a
   - Note: The async is never put in front of the () in the arrow function
   - fetchPlaces() needs to be executed outside the fetch function
 
-  ### throtteling - slow 3d to test where to put loading scripts
+## throtteling - slow 3d to test where to put loading scripts
 
-  - Inside your network tab insdie developer tools you can select slow 3d to throttle the data and you'll see how it takes a while for the pictures to arrive. This is not a great user experience. It would make sense for some fallback text to be displayed while we are waiting for the data to arrive.
-  - We allready have fallback text for the situation where we do not have pplaces available, but not for where the places/pics are just slow to arrive, because they have not be fetched yet. So you can set this prop in AvailablePlaces.jsx
-    loadingText="Fetching place data..."
-  - And the also a prop that shows true for while we are waiting for the places to arrive and false when the places have been fetched and the data is there
-    isLoading={true}
-  - Inside Places.jsx you should now accept these two props and then use these two props to show some special output. Note the two new condition adjustments: One new one set for when isLoading is true and two places where isLoading is false and no new places is as well not available(!isLoading && places.length === 0 )
+- Inside your network tab insdie developer tools you can select slow 3d to throttle the data and you'll see how it takes a while for the pictures to arrive. This is not a great user experience. It would make sense for some fallback text to be displayed while we are waiting for the data to arrive.
+- We allready have fallback text for the situation where we do not have pplaces available, but not for where the places/pics are just slow to arrive, because they have not be fetched yet. So you can set this prop in AvailablePlaces.jsx
+  loadingText="Fetching place data..."
+- And the also a prop that shows true for while we are waiting for the places to arrive and false when the places have been fetched and the data is there
+  isLoading={true}
+- Inside Places.jsx you should now accept these two props and then use these two props to show some special output. Note the two new condition adjustments: One new one set for when isLoading is true and two places where isLoading is false and no new places is as well not available(!isLoading && places.length === 0 )
 
-  ```
-  export default function Places({ title, places, fallbackText, onSelectPlace, isLoading, loadingText }) {
-  console.log(places);
-  return (
-    <section className="places-category">
-      <h2>{title}</h2>
-      {isLoading && <p className="fallback-text">{loadingText}</p>}
-      {!isLoading && places.length === 0 && <p className="fallback-text">{fallbackText}</p>}
-      {!isLoading && places.length > 0 && (
-        <ul className="places">
-          {places.map((place) => (
-            <li key={place.id} className="place-item">
-              <button onClick={() => onSelectPlace(place)}>
-                <img src={`http://localhost:3000/${place.image.src}`} alt={place.image.alt} />
-    <h3>{place.title}</h3>
-    </button>
-    </li>
-    ))}
-    </ul>
-    )}
-    </section>
-    );
-    }
-  ```
+```
+export default function Places({ title, places, fallbackText, onSelectPlace, isLoading, loadingText }) {
+console.log(places);
+return (
+  <section className="places-category">
+    <h2>{title}</h2>
+    {isLoading && <p className="fallback-text">{loadingText}</p>}
+    {!isLoading && places.length === 0 && <p className="fallback-text">{fallbackText}</p>}
+    {!isLoading && places.length > 0 && (
+      <ul className="places">
+        {places.map((place) => (
+          <li key={place.id} className="place-item">
+            <button onClick={() => onSelectPlace(place)}>
+              <img src={`http://localhost:3000/${place.image.src}`} alt={place.image.alt} />
+  <h3>{place.title}</h3>
+  </button>
+  </li>
+  ))}
+  </ul>
+  )}
+  </section>
+  );
+  }
+```
 
 - isLoading is now set to true, but it should really be set synamically through our http request. As long as the data is on its way it should be set to true and when it has arrived it should be set to false
 - To achieve this you need to set some state insidte the AvailablePlaces component and set it to true inside the useEffect function or inside the fetchPlaces function and to false once we have the data
@@ -173,7 +173,7 @@ Sends a response: Finally, the server sends a response back to the client with a
 
 - So now you can use the isFetching state as a value for the isLoading prop
 
-### Fetching data might fail resulting in errors
+## Fetching data might fail resulting in errors
 
 - Data fetching can fail in two ways and one needs to cater for both cases:
   a. You might fail to send the get request in the first place like where th network connection crash
@@ -244,4 +244,17 @@ and create a fallback message inside the catch block
 setError({ message: error.message || "Could not fetch places, please try again later" });
 }
 
-11.
+## Handling data before you use it in the UI
+
+- Lets say we want to sort the response object before it is displayed inside the browser
+- Our project has a loc sort file that will calculate the distance between myself and the destination place and sort the places accordingly from nearest to furthest.
+- The navigator object that is provided by the browser can fetch the location of the user.
+  navigator.geolocation.getCurrentPosition()
+- The position is not available instantly, therefore getCurrentPosition() takes a function that will be executed by the browser once the data becomes available. One cannot use async await here because this method does not yield a promise, but rather use a call back pattern that defines the code that should be executed once the position coordinates have been fetched. So the postion coordinates are received inside this function and it is here that you should set your calculations by taking this position in
+
+        navigator.geolocation.getCurrentPosition((position) => {
+          const sortedPlaces = sortPlacesByDistance(resData.places, position.coords.latitude, position.coords.langitude);
+        setAvailablePlaces(sortedPlaces);
+        });
+
+- A problem now is that since we are not running a async await function here, but a callback, js will execute the setIsFetching(false) line right after the getCurrentPosition has been invoked, but before the data is received back. So one should move that part of the code into the callback function after setting the available places AND one should also call after an error is returned if there is one.
