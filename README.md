@@ -172,3 +172,76 @@ Sends a response: Finally, the server sends a response back to the client with a
   }, []);
 
 - So now you can use the isFetching state as a value for the isLoading prop
+
+### Fetching data might fail resulting in errors
+
+- Data fetching can fail in two ways and one needs to cater for both cases:
+  a. You might fail to send the get request in the first place like where th network connection crash
+  b. Something goes wrong in the backend which sends an error response
+- Error response situation:
+
+  1. First check for the response.ok property
+  2. When - if(response.ok) is true it will deliver a status code of 200 or 200
+  3. When - if(response.ok) is false it will deliver a status code of 400 or 500
+  4. If it is false you want to deal with the error situation by for example throwing an error by using the built in Error class
+
+     if (!response.ok) {
+     const error = new Error("Failed to fetch places");
+     throw error
+     }
+
+  or do it all on one step:
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch places");
+      }
+
+  5.  Throwing an error will crach the appliction. You can prevent this by wrapping your code into a try catch block around the code that might fail and then catch the error that might be thrown and then define some code that should be executed if an error was encountered.
+  6.  Other than yourself writing code that throws an error, the fetch function can throw an error all by itself if there is for instance no connection. So the try catch block is precisely what we want here because either way we end up in the catch block where we can handle the error when anything goes wrong.
+
+  useEffect(() => {
+  //setIsFetching(true);
+  async function fetchPlaces() {
+  setIsFetching(true);
+
+      try {
+        const response = await fetch("http://localhost:3000/places");
+        const resData = await response.json();
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch places");
+        }
+      } catch (error) {
+        // code...
+      }
+
+      setAvailablePlaces(resData.places);
+      setIsFetching(false);
+
+  }
+
+  fetchPlaces();
+  }, []);
+
+  7. Typically handling the error in a react application means that we want to update the UI and show an error message to the user. This means that we will need a piece of state / and error state. It is supercoming to have these three pieces of state together when fetching data.
+
+  - the data state where you store the data that you are fetching (availablePlaces)
+  - the loading state where you tell the user you are currently fetching data (isFetching)
+  - the error state which you use to show potential errors
+
+  8. So now we can setError(error) in the catch block and set the caught error as the value for the error state
+  9. The problem we have with the data as it is setup now is that we are trying to set the resData outside the try block. If an error results from the try block the resDate can never have data available to be set on the setAvailablePlaces. So the setAvailablePlaces must be moved into the try block
+
+10. If an error is encountered you can return a separate error component. So call this error component and then set the required props for title and message
+
+if (error) {
+return <Error title="An error occured" message={error.message} />;
+}
+
+and create a fallback message inside the catch block
+
+} catch (error) {
+setError({ message: error.message || "Could not fetch places, please try again later" });
+}
+
+11.
